@@ -1,6 +1,9 @@
 #include <stdlib.h>
 
 #include "inflate.h"
+#include "bit_reader.h"
+#include "circular_buffer.h"
+#include "huffman_tree.h"
 
 #define BTYPE_NONE 0x0
 #define BTYPE_FIXED 0x1
@@ -15,7 +18,7 @@
 #define NUM_LITLENGTH_CODES 288
 #define NUM_DIST_CODES 32
 
-#define OUT_BUFFER_SIZE 32768
+#define BUFFER_SIZE 32768
 
 typedef struct {
 	int bits;
@@ -39,152 +42,18 @@ const BitVal dist_bitvals[] = {
 
 static const int lengths_order[] = { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
 
-struct _HuffmanTree;
-typedef struct _HuffmanTree HuffmanTree;
-struct _HuffmanTree {
-	int codeword;
-	HuffmanTree *children[2];
-};
-
 struct _Inflate {
-	const unsigned char *in_buffer;
-	int in_size;
-	int in_pos;
-	unsigned char current;
-	int current_bit;
+	BitReader *reader;
 	unsigned int block_final;
 	unsigned int block_type;
 	HuffmanTree *litlength_tree;
 	HuffmanTree *dist_tree;
-	unsigned char out_buffer[OUT_BUFFER_SIZE];
-	int out_write_pos;
+	CircularBuffer *buffer;
 };
 
-static unsigned int getbits(Inflate *inflate, int n)
+static unsigned int getbits(Inflate *inflate, int num_bits)
 {
-	unsigned int result = 0;
-	int read = 0;
-	while(read < n) {
-		int left = n - read;
-		unsigned int newbits = inflate->current;
-		int x = 8 - inflate->current_bit;
-		if(x > left) {
-			x = left;
-		}
-
-		newbits &= ~(0xffffffff << x);
-		result |= newbits << read;
-
-		read += x;
-		inflate->current >>= x;
-		inflate->current_bit += x;
-		if(inflate->current_bit == 8) {
-			inflate->in_pos++;
-			inflate->current = inflate->in_buffer[inflate->in_pos];
-			inflate->current_bit = 0;
-		}
-	}
-
-	return result;
-}
-
-static void byte_sync(Inflate *inflate)
-{
-	inflate->in_pos++;
-	inflate->current = inflate->in_buffer[inflate->in_pos];
-	inflate->current_bit = 0;
-}
-
-static HuffmanTree *build_tree(int *lengths, int num_lengths)
-{
-	HuffmanTree **current_trees;
-	HuffmanTree **new_trees;
-	HuffmanTree **trees;
-	HuffmanTree **swap;
-	HuffmanTree *result;
-	int max_length;
-	int i;
-	int tree_idx;
-	int length;
-
-	max_length = 0;
-	for(i=0; i<num_lengths; i++) {
-		if(lengths[i] > max_length) {
-			max_length = lengths[i];
-		}
-	}
-
-	trees = (HuffmanTree**)malloc((num_lengths * 2 + 1) * sizeof(HuffmanTree*));
-	current_trees = trees;
-	new_trees = trees + num_lengths;
-	current_trees[0] = NULL;
-
-	for(length = max_length; length >= 0; length--) {
-		tree_idx = 0;
-
-		if(length > 0) {
-			for(i=0; i<num_lengths; i++) {
-				if(lengths[i] == length) {
-					HuffmanTree *tree = (HuffmanTree*)malloc(sizeof(HuffmanTree));
-					tree->codeword = i;
-					tree->children[0] = tree->children[1] = NULL;
-					new_trees[tree_idx] = tree;
-					tree_idx++;
-				}
-			}
-		}
-
-		for(i=0; ; i++) {
-			HuffmanTree *tree;
-
-			if(current_trees[i] == NULL) {
-				break;
-			}
-
-			tree = (HuffmanTree*)malloc(sizeof(HuffmanTree));
-			tree->codeword = -1;
-			tree->children[0] = current_trees[i];
-			i++;
-			tree->children[1] = current_trees[i];
-			new_trees[tree_idx] = tree;
-			tree_idx++;
-			if(current_trees[i] == NULL) {
-				break;
-			}
-		}
-
-		new_trees[tree_idx] = NULL;
-		swap = new_trees;
-		new_trees = current_trees;
-		current_trees = swap;
-	}
-
-	result = current_trees[0];
-	free(trees);
-	return result;
-}
-
-static void free_tree(HuffmanTree *tree)
-{
-	if(tree == NULL) {
-		return;
-	}
-
-	free_tree(tree->children[0]);
-	free_tree(tree->children[1]);
-	free(tree);
-}
-
-static int read_huffman(Inflate *inflate, HuffmanTree *tree)
-{
-	HuffmanTree *cursor = tree;
-
-	while(cursor->codeword == -1) {
-		unsigned int bit = getbits(inflate, 1);
-		cursor = cursor->children[bit];
-	}
-
-	return cursor->codeword;
+	return bit_reader_read(inflate->reader, num_bits);
 }
 
 static void read_lengths(Inflate *inflate, HuffmanTree *tree, int *lengths, int num_lengths, int *last_codeword)
@@ -197,7 +66,7 @@ static void read_lengths(Inflate *inflate, HuffmanTree *tree, int *lengths, int 
 
 	idx = 0;
 	while(idx < num_lengths) {
-		codeword = read_huffman(inflate, tree);
+		codeword = huffman_tree_read(tree, inflate->reader);
 
 		switch(codeword) {
 			case CLEN_COPY:
@@ -273,8 +142,8 @@ static void setup_block(Inflate *inflate)
 				dist_lengths[i] = 5;
 			}
 
-			inflate->litlength_tree = build_tree(lit_lengths, NUM_LITLENGTH_CODES);
-			inflate->dist_tree = build_tree(dist_lengths, NUM_DIST_CODES);
+			inflate->litlength_tree = huffman_tree_from_lengths(lit_lengths, NUM_LITLENGTH_CODES);
+			inflate->dist_tree = huffman_tree_from_lengths(dist_lengths, NUM_DIST_CODES);
 
 			break;
 
@@ -288,7 +157,7 @@ static void setup_block(Inflate *inflate)
 				lengths[lengths_order[i]] = getbits(inflate, 3);
 			}
 
-			length_tree = build_tree(lengths, NUM_LENGTH_CODES);
+			length_tree = huffman_tree_from_lengths(lengths, NUM_LENGTH_CODES);
 
 			memset(lit_lengths, 0, NUM_LITLENGTH_CODES * sizeof(int));
 			memset(dist_lengths, 0, NUM_DIST_CODES * sizeof(int));
@@ -296,57 +165,11 @@ static void setup_block(Inflate *inflate)
 			read_lengths(inflate, length_tree, lit_lengths, hlit + 257, &last_codeword);
 			read_lengths(inflate, length_tree, dist_lengths, hdist + 1, &last_codeword);
 
-			inflate->litlength_tree = build_tree(lit_lengths, NUM_LITLENGTH_CODES);
-			inflate->dist_tree = build_tree(dist_lengths, NUM_DIST_CODES);
+			inflate->litlength_tree = huffman_tree_from_lengths(lit_lengths, NUM_LITLENGTH_CODES);
+			inflate->dist_tree = huffman_tree_from_lengths(dist_lengths, NUM_DIST_CODES);
 
-			free_tree(length_tree);
+			huffman_tree_free(length_tree);
 			break;
-	}
-}
-
-static void put_out(Inflate *inflate, unsigned char c)
-{
-	inflate->out_buffer[inflate->out_write_pos] = c;
-	inflate->out_write_pos++;
-	if(inflate->out_write_pos == OUT_BUFFER_SIZE) {
-		inflate->out_write_pos = 0;
-	}
-}
-
-static void copy_out(Inflate *inflate, int length, int dist)
-{
-	int src;
-	int i;
-
-	src = inflate->out_write_pos + OUT_BUFFER_SIZE - dist;
-	if(src >= OUT_BUFFER_SIZE) {
-		src -= OUT_BUFFER_SIZE;
-	}
-
-	for(i=0; i<length; i++) {
-		inflate->out_buffer[inflate->out_write_pos] = inflate->out_buffer[src];
-		inflate->out_write_pos++;
-		if(inflate->out_write_pos == OUT_BUFFER_SIZE) {
-			inflate->out_write_pos = 0;
-		}
-
-		src++;
-		if(src == OUT_BUFFER_SIZE) {
-			src = 0;
-		}
-	}
-}
-
-static void write_out(Inflate *inflate, const unsigned char *buffer, int length)
-{
-	int i;
-
-	for(i=0; i<length; i++) {
-		inflate->out_buffer[inflate->out_write_pos] = buffer[i];
-		inflate->out_write_pos++;
-		if(inflate->out_write_pos == OUT_BUFFER_SIZE) {
-			inflate->out_write_pos = 0;
-		}
 	}
 }
 
@@ -354,23 +177,24 @@ static void read_block(Inflate *inflate)
 {
 	int codeword;
 	int length;
-	int dist;
+	int distance;
 	BitVal bitval;
 	unsigned int extra;
 
 	if(inflate->block_type == BTYPE_NONE) {
-		byte_sync(inflate);
+		bit_reader_byte_sync(inflate->reader);
 		length = getbits(inflate, 16);
 		getbits(inflate, 16);
-		write_out(inflate, inflate->in_buffer + inflate->in_pos, length);
+		circular_buffer_write(inflate->buffer, bit_reader_buffer(inflate->reader), length);
+		bit_reader_advance(inflate->reader, length);
 		return;
 	}
 
 	while(1) {
-		codeword = read_huffman(inflate, inflate->litlength_tree);
+		codeword = huffman_tree_read(inflate->litlength_tree, inflate->reader);
 
 		if(codeword < 256) {
-			put_out(inflate, (unsigned char)codeword);
+			circular_buffer_put_byte(inflate->buffer, (unsigned char)codeword);
 		} else if(codeword == 256) {
 			break;
 		} else {
@@ -378,12 +202,12 @@ static void read_block(Inflate *inflate)
 			extra = getbits(inflate, bitval.bits);
 			length = bitval.val + extra;
 
-			codeword = read_huffman(inflate, inflate->dist_tree);
+			codeword = huffman_tree_read(inflate->dist_tree, inflate->reader);
 			bitval = dist_bitvals[codeword];
 			extra = getbits(inflate, bitval.bits);
-			dist = bitval.val + extra;
+			distance = bitval.val + extra;
 
-			copy_out(inflate, length, dist);
+			circular_buffer_copy(inflate->buffer, distance, length);
 		}
 	}
 }
@@ -404,12 +228,8 @@ void inflate_read(Inflate *inflate)
 Inflate *inflate_new(const unsigned char *buffer, int buffer_size)
 {
 	Inflate *inflate = (Inflate*)malloc(sizeof(Inflate));
-	inflate->in_buffer = buffer;
-	inflate->in_size = buffer_size;
-	inflate->in_pos = 0;
-	inflate->current = inflate->in_buffer[inflate->in_pos];
-	inflate->current_bit = 0;
-	inflate->out_write_pos = 0;
+	inflate->reader = bit_reader_new(buffer, buffer_size);
+	inflate->buffer = circular_buffer_new(BUFFER_SIZE);
 
 	setup_block(inflate);
 
@@ -418,7 +238,10 @@ Inflate *inflate_new(const unsigned char *buffer, int buffer_size)
 
 void inflate_free(Inflate *inflate)
 {
-	free_tree(inflate->litlength_tree);
-	free_tree(inflate->dist_tree);
+	bit_reader_free(inflate->reader);
+	circular_buffer_free(inflate->buffer);
+	huffman_tree_free(inflate->litlength_tree);
+	huffman_tree_free(inflate->dist_tree);
+
 	free(inflate);
 }

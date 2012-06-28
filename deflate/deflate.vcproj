@@ -147,7 +147,19 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\bit_reader.c"
+				>
+			</File>
+			<File
+				RelativePath=".\circular_buffer.c"
+				>
+			</File>
+			<File
 				RelativePath=".\gzip.c"
+				>
+			</File>
+			<File
+				RelativePath=".\huffman_tree.c"
 				>
 			</File>
 			<File
@@ -165,7 +177,19 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
+				RelativePath=".\bit_reader.h"
+				>
+			</File>
+			<File
+				RelativePath=".\circular_buffer.h"
+				>
+			</File>
+			<File
 				RelativePath=".\gzip.h"
+				>
+			</File>
+			<File
+				RelativePath=".\huffman_tree.h"
 				>
 			</File>
 			<File
