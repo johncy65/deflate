@@ -51,69 +51,21 @@ struct _Inflate {
 	CircularBuffer *buffer;
 };
 
-static unsigned int getbits(Inflate *inflate, int num_bits)
-{
-	return bit_reader_read(inflate->reader, num_bits);
-}
-
-static void read_lengths(Inflate *inflate, HuffmanTree *tree, int *lengths, int num_lengths, int *last_codeword)
-{
-	unsigned int extra;
-	int codeword;
-	int idx;
-	int i;
-	int j;
-
-	idx = 0;
-	while(idx < num_lengths) {
-		codeword = huffman_tree_read(tree, inflate->reader);
-
-		switch(codeword) {
-			case CLEN_COPY:
-				extra = getbits(inflate, 2);
-				for(j=0; j<extra + 3; j++) {
-					lengths[idx++] = *last_codeword;
-				}
-				break;
-
-			case CLEN_ZERO_3:
-				extra = getbits(inflate, 3);
-				for(j=0; j<extra + 3; j++) {
-					lengths[idx++] = 0;
-				}
-				*last_codeword = 0;
-				break;
-
-			case CLEN_ZERO_7:
-				extra = getbits(inflate, 7);
-				for(j=0; j<extra + 11; j++) {
-					lengths[idx++] = 0;
-				}
-				*last_codeword = 0;
-				break;
-
-			default:
-				lengths[idx++] = codeword;
-				*last_codeword = codeword;
-				break;
-		}
-	}
-}
-
 static void setup_block(Inflate *inflate)
 {
 	unsigned int hlit;
 	unsigned int hdist;
 	unsigned int hclen;
-	int lengths[NUM_LENGTH_CODES];
-	int lit_lengths[NUM_LITLENGTH_CODES];
-	int dist_lengths[NUM_DIST_CODES];
+	int lengths[NUM_LITLENGTH_CODES + NUM_DIST_CODES];
 	int i;
-	int last_codeword;
-	HuffmanTree *length_tree;
+	int j;
+	unsigned int extra;
+	unsigned int codeword;
+	unsigned int last_codeword;
+	HuffmanTree *tree;
 
-	inflate->block_final = getbits(inflate, 1);
-	inflate->block_type = getbits(inflate, 2);
+	inflate->block_final = bit_reader_read(inflate->reader, 1);
+	inflate->block_type = bit_reader_read(inflate->reader, 2);
 
 	switch(inflate->block_type) {
 		case BTYPE_NONE:
@@ -123,52 +75,84 @@ static void setup_block(Inflate *inflate)
 
 		case BTYPE_FIXED:
 			for(i=0; i<144; i++) {
-				lit_lengths[i] = 8;
+				lengths[i] = 8;
 			}
 
 			for(i=144; i<256; i++) {
-				lit_lengths[i] = 9;
+				lengths[i] = 9;
 			}
 
 			for(i=256; i<280; i++) {
-				lit_lengths[i] = 7;
+				lengths[i] = 7;
 			}
 
 			for(i=280; i<288; i++) {
-				lit_lengths[i] = 8;
+				lengths[i] = 8;
 			}
+
+			inflate->litlength_tree = huffman_tree_from_lengths(lengths, NUM_LITLENGTH_CODES);
 
 			for(i=0; i<32; i++) {
-				dist_lengths[i] = 5;
+				lengths[i] = 5;
 			}
 
-			inflate->litlength_tree = huffman_tree_from_lengths(lit_lengths, NUM_LITLENGTH_CODES);
-			inflate->dist_tree = huffman_tree_from_lengths(dist_lengths, NUM_DIST_CODES);
+			inflate->dist_tree = huffman_tree_from_lengths(lengths, NUM_DIST_CODES);
 
 			break;
 
 		case BTYPE_DYNAMIC:
-			hlit = getbits(inflate, 5);
-			hdist = getbits(inflate, 5);
-			hclen = getbits(inflate, 4);
+			hlit = bit_reader_read(inflate->reader, 5);
+			hdist = bit_reader_read(inflate->reader, 5);
+			hclen = bit_reader_read(inflate->reader, 4);
 
 			memset(lengths, 0, NUM_LENGTH_CODES * sizeof(int));
 			for(i=0; i<hclen+4; i++) {
-				lengths[lengths_order[i]] = getbits(inflate, 3);
+				lengths[lengths_order[i]] = bit_reader_read(inflate->reader, 3);
 			}
 
-			length_tree = huffman_tree_from_lengths(lengths, NUM_LENGTH_CODES);
+			tree = huffman_tree_from_lengths(lengths, NUM_LENGTH_CODES);
 
-			memset(lit_lengths, 0, NUM_LITLENGTH_CODES * sizeof(int));
-			memset(dist_lengths, 0, NUM_DIST_CODES * sizeof(int));
+			memset(lengths, 0, (NUM_LITLENGTH_CODES + NUM_DIST_CODES) * sizeof(int));
 			last_codeword = 0;
-			read_lengths(inflate, length_tree, lit_lengths, hlit + 257, &last_codeword);
-			read_lengths(inflate, length_tree, dist_lengths, hdist + 1, &last_codeword);
+			i = 0;
+			while(i < hlit + hdist + 258) {
+				codeword = huffman_tree_read(tree, inflate->reader);
 
-			inflate->litlength_tree = huffman_tree_from_lengths(lit_lengths, NUM_LITLENGTH_CODES);
-			inflate->dist_tree = huffman_tree_from_lengths(dist_lengths, NUM_DIST_CODES);
+				switch(codeword) {
+					case CLEN_COPY:
+						extra = bit_reader_read(inflate->reader, 2);
+						for(j=0; j<extra + 3; j++) {
+							lengths[i++] = last_codeword;
+						}
+						break;
 
-			huffman_tree_free(length_tree);
+					case CLEN_ZERO_3:
+						extra = bit_reader_read(inflate->reader, 3);
+						for(j=0; j<extra + 3; j++) {
+							lengths[i++] = 0;
+						}
+						last_codeword = 0;
+						break;
+
+					case CLEN_ZERO_7:
+						extra = bit_reader_read(inflate->reader, 7);
+						for(j=0; j<extra + 11; j++) {
+							lengths[i++] = 0;
+						}
+						last_codeword = 0;
+						break;
+
+					default:
+						lengths[i++] = codeword;
+						last_codeword = codeword;
+						break;
+				}
+			}
+
+			huffman_tree_free(tree);
+
+			inflate->litlength_tree = huffman_tree_from_lengths(lengths, hlit + 257);
+			inflate->dist_tree = huffman_tree_from_lengths(lengths + hlit + 257, hdist + 1);
 			break;
 	}
 }
@@ -183,8 +167,8 @@ static void read_block(Inflate *inflate)
 
 	if(inflate->block_type == BTYPE_NONE) {
 		bit_reader_byte_sync(inflate->reader);
-		length = getbits(inflate, 16);
-		getbits(inflate, 16);
+		length = bit_reader_read(inflate->reader, 16);
+		bit_reader_read(inflate->reader, 16);
 		circular_buffer_write(inflate->buffer, bit_reader_buffer(inflate->reader), length);
 		bit_reader_advance(inflate->reader, length);
 		return;
@@ -199,12 +183,12 @@ static void read_block(Inflate *inflate)
 			break;
 		} else {
 			bitval = length_bitvals[codeword - 257];
-			extra = getbits(inflate, bitval.bits);
+			extra = bit_reader_read(inflate->reader, bitval.bits);
 			length = bitval.val + extra;
 
 			codeword = huffman_tree_read(inflate->dist_tree, inflate->reader);
 			bitval = dist_bitvals[codeword];
-			extra = getbits(inflate, bitval.bits);
+			extra = bit_reader_read(inflate->reader, bitval.bits);
 			distance = bitval.val + extra;
 
 			circular_buffer_copy(inflate->buffer, distance, length);
