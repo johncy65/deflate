@@ -1,4 +1,4 @@
-#include "gzip.h"
+#include "GZip.hpp"
 
 #define FTEXT     0x1
 #define FHCRC     0x2
@@ -6,7 +6,7 @@
 #define FNAME     0x8
 #define FCOMMENT  0x10
 
-int gzip_header_length(const unsigned char *buffer, int length)
+int GZip::headerLength(const unsigned char *buffer, int length)
 {
 	unsigned char flg;
 	short int xlen;

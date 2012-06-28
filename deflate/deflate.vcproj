@@ -147,27 +147,27 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\bit_reader.c"
+				RelativePath=".\BitReader.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\circular_buffer.c"
+				RelativePath=".\CircularBuffer.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\gzip.c"
+				RelativePath=".\GZip.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\huffman_tree.c"
+				RelativePath=".\HuffmanTree.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\inflate.c"
+				RelativePath=".\Inflate.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\main.c"
+				RelativePath=".\main.cpp"
 				>
 			</File>
 		</Filter>
@@ -177,23 +177,23 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\bit_reader.h"
+				RelativePath=".\BitReader.hpp"
 				>
 			</File>
 			<File
-				RelativePath=".\circular_buffer.h"
+				RelativePath=".\CircularBuffer.hpp"
 				>
 			</File>
 			<File
-				RelativePath=".\gzip.h"
+				RelativePath=".\GZip.hpp"
 				>
 			</File>
 			<File
-				RelativePath=".\huffman_tree.h"
+				RelativePath=".\HuffmanTree.hpp"
 				>
 			</File>
 			<File
-				RelativePath=".\inflate.h"
+				RelativePath=".\Inflate.hpp"
 				>
 			</File>
 		</Filter>

@@ -1,7 +1,8 @@
 #include <stdio.h>
+#include <stdlib.h>
 
-#include "inflate.h"
-#include "gzip.h"
+#include "Inflate.hpp"
+#include "GZip.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -9,7 +10,7 @@ int main(int argc, char *argv[])
 	int size;
 	unsigned char *buffer;
 	Inflate *inflate;
-	int gzip_len;
+	int gzipLen;
 
 	if(argc < 2) {
 		fprintf(stderr, "No filename specified\n");
@@ -26,9 +27,9 @@ int main(int argc, char *argv[])
 	buffer = (unsigned char*)malloc(size);
 	fread(buffer, 1, size, file);
 
-	gzip_len = gzip_header_length(buffer, size);
-	inflate = inflate_new(buffer + gzip_len, size - gzip_len);
-	inflate_read(inflate);
+	gzipLen = GZip::headerLength(buffer, size);
+	inflate = new Inflate(buffer + gzipLen, size - gzipLen);
+	inflate->read();
 
 	return 0;
 }
