@@ -1,7 +1,7 @@
 #ifndef HUFFMAN_TREE_H
 #define HUFFMAN_TREE_H
 
-#include "BitReader.hpp"
+class BitReader;
 
 class HuffmanTree {
 public:

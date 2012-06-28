@@ -1,4 +1,5 @@
 #include "HuffmanTree.hpp"
+#include "BitReader.hpp"
 
 #include <stdlib.h>
 
@@ -93,7 +94,7 @@ unsigned int HuffmanTree::read(BitReader *reader)
 	HuffmanTree *cursor = this;
 
 	while(cursor->mCodeword == INVALID_CODEWORD) {
-		unsigned int bit = reader->read(1);
+		unsigned int bit = reader->readBits(1);
 		cursor = cursor->mChildren[bit];
 	}
 

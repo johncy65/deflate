@@ -5,10 +5,11 @@ class BitReader {
 public:
 	BitReader(const unsigned char *buffer, int length);
 
-	unsigned int read(int numBits);
+	unsigned int readBits(int num);
+	int readBytes(unsigned char *buffer, int length);
+
 	void byteSync();
-	const unsigned char *buffer();
-	void advance(int length);
+	bool empty();
 
 private:
 	const unsigned char *mBuffer;
