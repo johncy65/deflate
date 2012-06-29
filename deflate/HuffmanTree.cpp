@@ -1,19 +1,17 @@
 #include "HuffmanTree.hpp"
 #include "Reader.hpp"
 
-#include <stdlib.h>
-
-#define INVALID_CODEWORD 0xffffffff
+static const unsigned int InvalidCodeword = 0xffffffff;
 
 HuffmanTree::HuffmanTree(unsigned int codeword)
 {
 	mCodeword = codeword;
-	mChildren[0] = mChildren[1] = NULL;
+	mChildren[0] = mChildren[1] = 0;
 }
 
 HuffmanTree::HuffmanTree(HuffmanTree *child0, HuffmanTree *child1)
 {
-	mCodeword = INVALID_CODEWORD;
+	mCodeword = InvalidCodeword;
 	mChildren[0] = child0;
 	mChildren[1] = child1;
 }
@@ -58,7 +56,7 @@ HuffmanTree *HuffmanTree::fromLengths(int *lengths, int numLengths)
 		for(i=0; ; i++) {
 			HuffmanTree *tree;
 
-			if(currentTrees[i] == NULL) {
+			if(!currentTrees[i]) {
 				break;
 			}
 
@@ -66,12 +64,12 @@ HuffmanTree *HuffmanTree::fromLengths(int *lengths, int numLengths)
 			i++;
 			newTrees[treeIdx] = tree;
 			treeIdx++;
-			if(currentTrees[i] == NULL) {
+			if(!currentTrees[i]) {
 				break;
 			}
 		}
 
-		newTrees[treeIdx] = NULL;
+		newTrees[treeIdx] = 0;
 		swap = newTrees;
 		newTrees = currentTrees;
 		currentTrees = swap;
@@ -89,12 +87,12 @@ HuffmanTree::~HuffmanTree()
 	delete mChildren[1];
 }
 
-unsigned int HuffmanTree::read(Reader *reader)
+unsigned int HuffmanTree::read(Reader &reader)
 {
 	HuffmanTree *cursor = this;
 
-	while(cursor->mCodeword == INVALID_CODEWORD) {
-		unsigned int bit = reader->readBits(1);
+	while(cursor->mCodeword == InvalidCodeword) {
+		unsigned int bit = reader.readBits(1);
 		cursor = cursor->mChildren[bit];
 	}
 

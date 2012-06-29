@@ -22,26 +22,23 @@ public:
 		int mPosition;
 	};
 
-	Inflate(Reader *reader);
+	Inflate(Reader &reader);
 	~Inflate();
 
 	int read(unsigned char *buffer, int length) throw(ReadException);
-	bool empty();
 
 private:
 	void setupBlock() throw(Reader::EndException);
-	int readBlock(unsigned char *buffer, int length) throw(Reader::EndException);
-
+	void readDynamicHuffmanTables() throw(ReadException);
 	void throwException() throw(ReadException);
 
-	Reader *mReader;
-	unsigned int mBlockFinal;
-	unsigned int mBlockType;
+	Reader &mReader;
+	bool mBlockFinal;
+	int mBlockType;
 	HuffmanTree *mLitlengthTree;
 	HuffmanTree *mDistTree;
-	int mRawLength;
 	bool mBlockEmpty;
-	CircularBuffer *mBuffer;
+	CircularBuffer mBuffer;
 };
 
 #endif

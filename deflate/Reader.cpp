@@ -1,7 +1,5 @@
 #include "Reader.hpp"
 
-#include <string.h>
-
 Reader::Reader()
 {
 	mBuffer = NULL;
@@ -117,11 +115,12 @@ int BufferReader::refillBuffer()
 	return 0;
 }
 
-#define BUFFER_SIZE 4096
-FileReader::FileReader(FILE *file) 
+static const int FileReaderBufferSize = 4096;
+
+FileReader::FileReader(std::ifstream &file)
+: mFile(file)
 {
-	mFile = file;
-	mMutableBuffer = new unsigned char[BUFFER_SIZE];
+	mMutableBuffer = new unsigned char[FileReaderBufferSize];
 	setBuffer(mMutableBuffer, 0);
 }
 
@@ -132,5 +131,6 @@ FileReader::~FileReader()
 
 int FileReader::refillBuffer()
 {
-	return fread(mMutableBuffer, 1, BUFFER_SIZE, mFile);
+	mFile.read((char*)mMutableBuffer, FileReaderBufferSize);
+	return mFile.gcount();
 }

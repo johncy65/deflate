@@ -11,7 +11,7 @@ public:
 	void putByte(unsigned char byte);
 	void copy(int distance, int length);
 	int write(const unsigned char *buffer, int length);
-	int write(Reader *reader, int length) throw(Reader::EndException);
+	int write(Reader &reader, int length) throw(Reader::EndException);
 
 	int readRemaining();
 	int writeRemaining();

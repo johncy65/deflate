@@ -1,44 +1,47 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <iostream>
+#include <fstream>
 
-#include "Inflate.hpp"
+#include "Reader.hpp"
 #include "GZip.hpp"
 
-#define BUFFER_SIZE 4096
+using std::cout;
+using std::cerr;
+using std::endl;
 
 int main(int argc, char *argv[])
 {
 	if(argc < 2) {
-		fprintf(stderr, "No filename specified\n");
+		cerr << "No filename specified" << endl;
 		exit(1);
 	}
 
 	const char *filename = argv[1];
-	FILE *file;
-	if(fopen_s(&file, filename, "rb") != 0) {
-		fprintf(stderr, "Error opening file %s\n", filename);
+	std::ifstream file(filename, std::ios_base::in | std::ios_base::binary);
+	if(file.fail()) {
+		cerr << "Error opening file " << filename << endl;
 		exit(1);
 	}
 
-	Reader *reader = new FileReader(file);
+	FileReader reader(file);
 
 	try {
-		GZip *gzip = new GZip(reader);
+		GZip gzip(reader);
 
-		unsigned char *buffer = new unsigned char[BUFFER_SIZE];
+		static const int BufferSize = 4096;
+		unsigned char *buffer = new unsigned char[BufferSize];
 		while(1) {
-			int bytesRead = gzip->read(buffer, BUFFER_SIZE);
+			int bytesRead = gzip.read(buffer, BufferSize);
 
-			fwrite(buffer, 1, bytesRead, stdout);
-
-			if(gzip->empty()) {
+			if(bytesRead == 0) {
 				break;
 			}
+
+			cout.write((char*)buffer, bytesRead);
 		}
 	} catch(GZip::InvalidFormatException e) {
-		fprintf(stderr, "File %s is not a valid GZip file\n", filename);
+		cerr << "File " << filename << " is not a valid GZip file" << endl;
 	} catch(GZip::ReadException e) {
-		fprintf(stderr, "*** Read error at position %i ***\n", e.position());
+		cerr << "*** Read error at position " << e.position() << " ***" << endl;
 	}
 
 	return 0;

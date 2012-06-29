@@ -9,7 +9,7 @@ public:
 
 	~HuffmanTree();
 
-	unsigned int read(Reader *reader) throw(Reader::EndException);
+	unsigned int read(Reader &reader) throw(Reader::EndException);
 
 private:
 	HuffmanTree(unsigned int codeword);

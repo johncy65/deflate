@@ -1,7 +1,7 @@
 #ifndef READER_H
 #define READER_H
 
-#include <stdio.h>
+#include <fstream>
 #include <exception>
 
 class Reader {
@@ -56,13 +56,13 @@ private:
 
 class FileReader : public Reader {
 public:
-	FileReader(FILE *file);
+	FileReader(std::ifstream &file);
 	virtual ~FileReader();
 
 private:
 	virtual int refillBuffer();
 
-	FILE *mFile;
+	std::ifstream &mFile;
 	unsigned char *mMutableBuffer;
 };
 

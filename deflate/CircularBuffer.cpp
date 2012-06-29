@@ -1,5 +1,3 @@
-#include <string.h>
-
 #include "CircularBuffer.hpp"
 #include "Reader.hpp"
 
@@ -86,7 +84,7 @@ int CircularBuffer::write(const unsigned char *buffer, int length)
 	return bytesWritten;
 }
 
-int CircularBuffer::write(Reader *reader, int length)
+int CircularBuffer::write(Reader &reader, int length)
 {
 	int writeLength = length;
 	if(writeLength > writeRemaining()) {
@@ -95,7 +93,7 @@ int CircularBuffer::write(Reader *reader, int length)
 
 	int bytesWritten = 0;
 	while(bytesWritten < writeLength) {
-		if(reader->empty()) {
+		if(reader.empty()) {
 			break;
 		}
 
@@ -104,7 +102,7 @@ int CircularBuffer::write(Reader *reader, int length)
 			segmentLength = mSize - mWritePos;
 		}
 
-		reader->readBytes(mBuffer + mWritePos, segmentLength);
+		reader.readBytes(mBuffer + mWritePos, segmentLength);
 		bytesWritten += segmentLength;
 		mWritePos += segmentLength;
 

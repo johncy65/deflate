@@ -3,13 +3,21 @@
 #include "Reader.hpp"
 #include "Inflate.hpp"
 
-#define FTEXT     0x1
-#define FHCRC     0x2
-#define FEXTRA    0x4
-#define FNAME     0x8
-#define FCOMMENT  0x10
+static const int FText = 0x1;
+static const int FHCRC = 0x2;
+static const int FExtra = 0x4;
+static const int FName = 0x8;
+static const int FComment = 0x10;
 
-GZip::GZip(Reader *reader)
+static const int Id1 = 0x1f;
+static const int Id2 = 0x8b;
+
+static const int CompressionMethodDeflate = 0x8;
+
+static const int ReservedFlags = 0x70;
+
+GZip::GZip(Reader &reader)
+: mInflate(reader)
 {
 	unsigned int id1;
 	unsigned int id2;
@@ -20,50 +28,48 @@ GZip::GZip(Reader *reader)
 	unsigned int os;
 
 	try {
-		id1 = reader->readBits(8);
-		if(id1 != 0x1f) {
+		id1 = reader.readBits(8);
+		if(id1 != Id1) {
 			throw InvalidFormatException();
 		}
 
-		id2 = reader->readBits(8);
-		if(id2 != 0x8b) {
+		id2 = reader.readBits(8);
+		if(id2 != Id2) {
 			throw InvalidFormatException();
 		}
 
-		cm = reader->readBits(8);
-		if(cm != 8) {
-			throw ReadException(reader->position());
+		cm = reader.readBits(8);
+		if(cm != CompressionMethodDeflate) {
+			throw ReadException(reader.position());
 		}
 
-		flg = reader->readBits(8);
-		if(flg & 0x70) {
-			throw ReadException(reader->position());
+		flg = reader.readBits(8);
+		if(flg & ReservedFlags) {
+			throw ReadException(reader.position());
 		}
 
-		mtime = reader->readBits(32);
-		xfl = reader->readBits(8);
-		os = reader->readBits(8);
+		mtime = reader.readBits(32);
+		xfl = reader.readBits(8);
+		os = reader.readBits(8);
 
-		if(flg & FEXTRA) {
-			unsigned int xlen = reader->readBits(16);
-			reader->readBytes(NULL, xlen);
+		if(flg & FExtra) {
+			unsigned int xlen = reader.readBits(16);
+			reader.readBytes(NULL, xlen);
 		}
 
-		if(flg & FNAME) {
+		if(flg & FName) {
 			char c;
 			do {
-				c = reader->readBits(8);
+				c = reader.readBits(8);
 			} while(c != '\0');
 		}
 
-		if(flg & FCOMMENT) {
+		if(flg & FComment) {
 			char c;
 			do {
-				c = reader->readBits(8);
+				c = reader.readBits(8);
 			} while(c != '\0');
 		}
-
-		mInflate = new Inflate(reader);
 	} catch(Reader::EndException e) {
 		throw ReadException(e.position());
 	}
@@ -72,13 +78,8 @@ GZip::GZip(Reader *reader)
 int GZip::read(unsigned char *buffer, int length)
 {
 	try {
-		return mInflate->read(buffer, length);
+		return mInflate.read(buffer, length);
 	} catch(Inflate::ReadException e) {
 		throw ReadException(e.position());
 	}
-}
-
-bool GZip::empty()
-{
-	return mInflate->empty();
 }

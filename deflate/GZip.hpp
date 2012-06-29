@@ -22,13 +22,12 @@ public:
 
 	class InvalidFormatException : public std::exception {};
 
-	GZip(Reader *reader) throw(ReadException, InvalidFormatException);
+	GZip(Reader &reader) throw(ReadException, InvalidFormatException);
 
 	int read(unsigned char *buffer, int length) throw(ReadException);
-	bool empty();
 
 private:
-	Inflate *mInflate;	
+	Inflate mInflate;
 };
 
 #endif
