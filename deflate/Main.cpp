@@ -20,20 +20,15 @@ int main(int argc, char *argv[])
 	}
 
 	Reader *reader = new FileReader(file);
-	GZip::readHeader(reader);
-	Inflate *inflate = new Inflate(reader);
+	GZip *gzip = new GZip(reader);
 
 	unsigned char *buffer = new unsigned char[BUFFER_SIZE];
 	while(1) {
-		int bytesRead = inflate->read(buffer, BUFFER_SIZE);
-		if(inflate->empty()) {
+		int bytesRead = gzip->read(buffer, BUFFER_SIZE);
+		if(gzip->empty()) {
 			break;
 		}
 	}
-
-	delete reader;
-	fclose(file);
-	delete[] buffer;
 
 	return 0;
 }

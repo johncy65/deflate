@@ -2,10 +2,17 @@
 #define GZIP_H
 
 class Reader;
+class Inflate;
 
 class GZip {
 public:
-	static void readHeader(Reader *reader);
+	GZip(Reader *reader);
+
+	int read(unsigned char *buffer, int length);
+	bool empty();
+
+private:
+	Inflate *mInflate;	
 };
 
 #endif
