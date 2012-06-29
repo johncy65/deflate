@@ -7,6 +7,7 @@ Reader::Reader()
 	mBuffer = NULL;
 	mLength = 0;
 	mPos = 0;
+	mOffset = 0;
 	mBit = 0;
 }
 
@@ -18,8 +19,6 @@ void Reader::setBuffer(const unsigned char *buffer, int length)
 {
 	mBuffer = buffer;
 	mLength = length;
-
-	updateCurrent();
 }
 
 unsigned int Reader::readBits(int num)
@@ -27,6 +26,8 @@ unsigned int Reader::readBits(int num)
 	unsigned int result = 0;
 	int read = 0;
 	while(read < num) {
+		updateCurrent();
+
 		int left = num - read;
 		unsigned int newbits = mCurrent;
 		int x = 8 - mBit;
@@ -42,24 +43,20 @@ unsigned int Reader::readBits(int num)
 		mBit += x;
 		if(mBit == 8) {
 			mBit = 0;
-
 			mPos++;
-			updateCurrent();
 		}
 	}
 
 	return result;
 }
 
-int Reader::readBytes(unsigned char *buffer, int length)
+void Reader::readBytes(unsigned char *buffer, int length)
 {
 	int bytesRead = 0;
 
 	while(bytesRead < length)
 	{
-		if(mLength == 0) {
-			break;
-		}
+		updateCurrent();
 
 		int readLength = length;
 		if(readLength > mLength - mPos) {
@@ -72,11 +69,7 @@ int Reader::readBytes(unsigned char *buffer, int length)
 
 		mPos += readLength;
 		bytesRead += readLength;
-
-		updateCurrent();
 	}
-
-	return bytesRead;
 }
 
 void Reader::byteSync()
@@ -84,8 +77,6 @@ void Reader::byteSync()
 	if(mBit > 0) {
 		mPos++;
 		mBit = 0;
-
-		updateCurrent();
 	}
 }
 
@@ -94,14 +85,24 @@ bool Reader::empty()
 	return (mLength == 0);
 }
 
+int Reader::position()
+{
+	return mOffset + mPos;
+}
+
 void Reader::updateCurrent()
 {
 	if(mPos >= mLength) {
 		mPos = 0;
+		mOffset += mLength;
 		mLength = refillBuffer();
 	}
 
-	if(mPos < mLength) {
+	if(mPos >= mLength) {
+		throw EndException(position());
+	}
+
+	if(mBit == 0) {
 		mCurrent = mBuffer[mPos];
 	}
 }

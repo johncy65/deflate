@@ -104,9 +104,9 @@ int CircularBuffer::write(Reader *reader, int length)
 			segmentLength = mSize - mWritePos;
 		}
 
-		int len = reader->readBytes(mBuffer + mWritePos, segmentLength);
-		bytesWritten += len;
-		mWritePos += len;
+		reader->readBytes(mBuffer + mWritePos, segmentLength);
+		bytesWritten += segmentLength;
+		mWritePos += segmentLength;
 
 		if(mWritePos == mSize) {
 			mWritePos = 0;

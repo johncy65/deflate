@@ -1,21 +1,38 @@
 #ifndef INFLATE_H
 #define INFLATE_H
 
+#include <exception>
+
 #include "Reader.hpp"
 #include "HuffmanTree.hpp"
 #include "CircularBuffer.hpp"
 
 class Inflate {
 public:
+	class ReadException : public std::exception
+	{
+	public:
+		ReadException(int position) {
+			mPosition = position;
+		}
+
+		int position() { return mPosition; }
+
+	private:
+		int mPosition;
+	};
+
 	Inflate(Reader *reader);
 	~Inflate();
 
-	int read(unsigned char *buffer, int length);
+	int read(unsigned char *buffer, int length) throw(ReadException);
 	bool empty();
 
 private:
-	void setupBlock();
-	int readBlock(unsigned char *buffer, int length);
+	void setupBlock() throw(Reader::EndException);
+	int readBlock(unsigned char *buffer, int length) throw(Reader::EndException);
+
+	void throwException() throw(ReadException);
 
 	Reader *mReader;
 	unsigned int mBlockFinal;

@@ -2,28 +2,44 @@
 #define READER_H
 
 #include <stdio.h>
+#include <exception>
 
 class Reader {
 public:
+	class EndException : public std::exception
+	{
+	public:
+		EndException(int position) {
+			mPosition = position;
+		}
+
+		int position() { return mPosition; }
+
+	private:
+		int mPosition;
+	};
+
 	Reader();
 	virtual ~Reader();
 
-	unsigned int readBits(int num);
-	int readBytes(unsigned char *buffer, int length);
+	unsigned int readBits(int num) throw(EndException);
+	void readBytes(unsigned char *buffer, int length) throw(EndException);
 
 	void byteSync();
 	bool empty();
+	int position();
 
 protected:
 	void setBuffer(const unsigned char *buffer, int length);
 
 private:
-	void updateCurrent();
+	void updateCurrent() throw(EndException);
 
 	virtual int refillBuffer() = 0;
 
 	const unsigned char *mBuffer;
 	int mLength;
+	int mOffset;
 	int mPos;
 	unsigned char mCurrent;
 	int mBit;

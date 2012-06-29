@@ -14,6 +14,7 @@
 #define CLEN_COPY 16
 #define CLEN_ZERO_3 17
 #define CLEN_ZERO_7 18
+#define CLEN_MAX 18
 
 #define NUM_LENGTH_CODES 19
 #define NUM_LITLENGTH_CODES 288
@@ -47,8 +48,8 @@ Inflate::Inflate(Reader *reader)
 {
 	mReader = reader;
 	mBuffer = new CircularBuffer(BUFFER_SIZE);
-
-	setupBlock();
+	mBlockEmpty = true;
+	mBlockFinal = 0;
 }
 
 Inflate::~Inflate()
@@ -65,16 +66,27 @@ void Inflate::setupBlock()
 
 	mBlockFinal = mReader->readBits(1);
 	mBlockType = mReader->readBits(2);
+	if(mBlockType == BTYPE_RESERVED) {
+		throw ReadException(mReader->position());
+	}
+
 	mBlockEmpty = false;
 
 	switch(mBlockType) {
 		case BTYPE_NONE:
-			mLitlengthTree = NULL;
-			mDistTree = NULL;
-			mReader->byteSync();
-			mRawLength = mReader->readBits(16);
-			mReader->readBits(16);
-			break;
+			{
+				mLitlengthTree = NULL;
+				mDistTree = NULL;
+				mReader->byteSync();
+				mRawLength = mReader->readBits(16);
+				unsigned int nlen = mReader->readBits(16);
+
+				if(mRawLength != ~nlen) {
+					throwException();
+				}
+
+				break;
+			}
 
 		case BTYPE_FIXED:
 			mRawLength = 0;
@@ -109,6 +121,10 @@ void Inflate::setupBlock()
 				unsigned int hdist = mReader->readBits(5);
 				unsigned int hclen = mReader->readBits(4);
 
+				if(hlit > 29 || hdist > 31 || hclen > 15) {
+					throwException();
+				}
+
 				memset(lengths, 0, NUM_LENGTH_CODES * sizeof(int));
 				for(i=0; i<hclen+4; i++) {
 					lengths[lengthsOrder[i]] = mReader->readBits(3);
@@ -122,12 +138,20 @@ void Inflate::setupBlock()
 				while(i < hlit + hdist + 258) {
 					unsigned int codeword = tree->read(mReader);
 
+					if(codeword > CLEN_MAX) {
+						throwException();
+					}
+
 					switch(codeword) {
 						case CLEN_COPY:
 							{
 							unsigned int extra = mReader->readBits(2);
 							for(int j=0; j<extra + 3; j++) {
 								lengths[i++] = lastCodeword;
+
+								if(i >= hlit + hdist + 258) {
+									throwException();
+								}
 							}
 							break;
 							}
@@ -137,6 +161,10 @@ void Inflate::setupBlock()
 							unsigned int extra = mReader->readBits(3);
 							for(int j=0; j<extra + 3; j++) {
 								lengths[i++] = 0;
+
+								if(i >= hlit + hdist + 258) {
+									throwException();
+								}
 							}
 							lastCodeword = 0;
 							break;
@@ -147,6 +175,10 @@ void Inflate::setupBlock()
 							unsigned int extra = mReader->readBits(7);
 							for(int j=0; j<extra + 11; j++) {
 								lengths[i++] = 0;
+
+								if(i >= hlit + hdist + 258) {
+									throwException();
+								}
 							}
 							lastCodeword = 0;
 							break;
@@ -194,6 +226,10 @@ int Inflate::readBlock(unsigned char *buffer, int length)
 				{
 					unsigned int codeword = mLitlengthTree->read(mReader);
 
+					if(codeword > 285) {
+						throwException();
+					}
+
 					if(codeword < 256) {
 						mBuffer->putByte((unsigned char)codeword);
 					} else if(codeword == 256) {
@@ -204,6 +240,10 @@ int Inflate::readBlock(unsigned char *buffer, int length)
 						int len = bitval.val + extra;
 
 						codeword = mDistTree->read(mReader);
+						if(codeword > 29) {
+							throwException();
+						}
+
 						bitval = distBitvals[codeword];
 						extra = mReader->readBits(bitval.bits);
 						int dist = bitval.val + extra;
@@ -223,23 +263,31 @@ int Inflate::readBlock(unsigned char *buffer, int length)
 
 int Inflate::read(unsigned char *buffer, int length)
 {
-	int bytesRead = 0;
-	while(bytesRead < length) {
-		bytesRead += readBlock(buffer + bytesRead, length - bytesRead);
-
-		if(mBlockEmpty) {
-			if(mBlockFinal) {
-				break;
+	try {
+		int bytesRead = 0;
+		while(bytesRead < length) {
+			if(mBlockEmpty) {
+				if(mBlockFinal) {
+					break;
+				}
+				setupBlock();
 			}
 
-			setupBlock();
+			bytesRead += readBlock(buffer + bytesRead, length - bytesRead);
 		}
-	}
 
-	return bytesRead;
+		return bytesRead;
+	} catch(Reader::EndException e) {
+		throw ReadException(e.position());
+	}
 }
 
 bool Inflate::empty()
 {
 	return (mBlockEmpty && mBlockFinal);
+}
+
+void Inflate::throwException()
+{
+	throw ReadException(mReader->position());
 }

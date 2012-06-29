@@ -19,39 +19,63 @@ GZip::GZip(Reader *reader)
 	unsigned int xfl;
 	unsigned int os;
 
-	id1 = reader->readBits(8);
-	id2 = reader->readBits(8);
-	cm = reader->readBits(8);
-	flg = reader->readBits(8);
-	mtime = reader->readBits(32);
-	xfl = reader->readBits(8);
-	os = reader->readBits(8);
+	try {
+		id1 = reader->readBits(8);
+		if(id1 != 0x1f) {
+			throw InvalidFormatException();
+		}
 
-	if(flg & FEXTRA) {
-		unsigned int xlen = reader->readBits(16);
-		reader->readBytes(NULL, xlen);
+		id2 = reader->readBits(8);
+		if(id2 != 0x8b) {
+			throw InvalidFormatException();
+		}
+
+		cm = reader->readBits(8);
+		if(cm != 8) {
+			throw ReadException(reader->position());
+		}
+
+		flg = reader->readBits(8);
+		if(flg & 0x70) {
+			throw ReadException(reader->position());
+		}
+
+		mtime = reader->readBits(32);
+		xfl = reader->readBits(8);
+		os = reader->readBits(8);
+
+		if(flg & FEXTRA) {
+			unsigned int xlen = reader->readBits(16);
+			reader->readBytes(NULL, xlen);
+		}
+
+		if(flg & FNAME) {
+			char c;
+			do {
+				c = reader->readBits(8);
+			} while(c != '\0');
+		}
+
+		if(flg & FCOMMENT) {
+			char c;
+			do {
+				c = reader->readBits(8);
+			} while(c != '\0');
+		}
+
+		mInflate = new Inflate(reader);
+	} catch(Reader::EndException e) {
+		throw ReadException(e.position());
 	}
-
-	if(flg & FNAME) {
-		char c;
-		do {
-			c = reader->readBits(8);
-		} while(c != '\0');
-	}
-
-	if(flg & FCOMMENT) {
-		char c;
-		do {
-			c = reader->readBits(8);
-		} while(c != '\0');
-	}
-
-	mInflate = new Inflate(reader);
 }
 
 int GZip::read(unsigned char *buffer, int length)
 {
-	return mInflate->read(buffer, length);
+	try {
+		return mInflate->read(buffer, length);
+	} catch(Inflate::ReadException e) {
+		throw ReadException(e.position());
+	}
 }
 
 bool GZip::empty()
