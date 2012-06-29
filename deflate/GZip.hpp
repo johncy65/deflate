@@ -1,9 +1,11 @@
 #ifndef GZIP_H
 #define GZIP_H
 
+class BitReader;
+
 class GZip {
 public:
-	static int headerLength(const unsigned char *buffer, int length);
+	static void readHeader(BitReader *reader);
 };
 
 #endif

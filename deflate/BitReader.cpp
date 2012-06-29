@@ -2,12 +2,22 @@
 
 #include <string.h>
 
-BitReader::BitReader(const unsigned char *buffer, int length)
+BitReader::BitReader()
+{
+	mBuffer = NULL;
+	mLength = 0;
+	mPos = 0;
+	mBit = 0;
+}
+
+BitReader::~BitReader()
+{
+}
+
+void BitReader::setBuffer(const unsigned char *buffer, int length)
 {
 	mBuffer = buffer;
 	mLength = length;
-	mPos = 0;
-	mBit = 0;
 
 	updateCurrent();
 }
@@ -56,7 +66,10 @@ int BitReader::readBytes(unsigned char *buffer, int length)
 			readLength = mLength - mPos;
 		}
 
-		memcpy(buffer, mBuffer + mPos, readLength);
+		if(buffer) {
+			memcpy(buffer, mBuffer + mPos, readLength);
+		}
+
 		mPos += readLength;
 		bytesRead += readLength;
 
@@ -94,11 +107,29 @@ void BitReader::updateCurrent()
 }
 
 BitReaderBuffer::BitReaderBuffer(const unsigned char *buffer, int length)
-: BitReader(buffer, length)
 {
+	setBuffer(buffer, length);
 }
 
 int BitReaderBuffer::refillBuffer()
 {
 	return 0;
+}
+
+#define BUFFER_SIZE 4096
+BitReaderFile::BitReaderFile(FILE *file) 
+{
+	mFile = file;
+	mMutableBuffer = new unsigned char[BUFFER_SIZE];
+	setBuffer(mMutableBuffer, 0);
+}
+
+BitReaderFile::~BitReaderFile()
+{
+	delete[] mMutableBuffer;
+}
+
+int BitReaderFile::refillBuffer()
+{
+	return fread(mMutableBuffer, 1, BUFFER_SIZE, mFile);
 }

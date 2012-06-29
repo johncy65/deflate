@@ -43,9 +43,9 @@ const BitVal distBitvals[] = {
 
 static const int lengthsOrder[] = { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
 
-Inflate::Inflate(const unsigned char *buffer, int bufferSize)
+Inflate::Inflate(BitReader *reader)
 {
-	mReader = new BitReaderBuffer(buffer, bufferSize);
+	mReader = reader;
 	mBuffer = new CircularBuffer(BUFFER_SIZE);
 
 	setupBlock();
@@ -53,7 +53,6 @@ Inflate::Inflate(const unsigned char *buffer, int bufferSize)
 
 Inflate::~Inflate()
 {
-	delete mReader;
 	delete mBuffer;
 	delete mLitlengthTree;
 	delete mDistTree;

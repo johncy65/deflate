@@ -7,7 +7,7 @@
 
 class Inflate {
 public:
-	Inflate(const unsigned char *buffer, int buffer_size);
+	Inflate(BitReader *reader);
 	~Inflate();
 
 	int read(unsigned char *buffer, int length);

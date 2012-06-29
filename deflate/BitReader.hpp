@@ -1,15 +1,21 @@
 #ifndef BIT_READER_H
 #define BIT_READER_H
 
+#include <stdio.h>
+
 class BitReader {
 public:
-	BitReader(const unsigned char *buffer, int length);
+	BitReader();
+	virtual ~BitReader();
 
 	unsigned int readBits(int num);
 	int readBytes(unsigned char *buffer, int length);
 
 	void byteSync();
 	bool empty();
+
+protected:
+	void setBuffer(const unsigned char *buffer, int length);
 
 private:
 	void updateCurrent();
@@ -30,6 +36,18 @@ public:
 private:
 
 	virtual int refillBuffer();
+};
+
+class BitReaderFile : public BitReader {
+public:
+	BitReaderFile(FILE *file);
+	virtual ~BitReaderFile();
+
+private:
+	virtual int refillBuffer();
+
+	FILE *mFile;
+	unsigned char *mMutableBuffer;
 };
 
 #endif

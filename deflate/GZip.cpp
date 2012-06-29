@@ -1,37 +1,36 @@
 #include "GZip.hpp"
 
+#include "BitReader.hpp"
+
 #define FTEXT     0x1
 #define FHCRC     0x2
 #define FEXTRA    0x4
 #define FNAME     0x8
 #define FCOMMENT  0x10
 
-int GZip::headerLength(const unsigned char *buffer, int length)
+void GZip::readHeader(BitReader *reader)
 {
-	unsigned char flg;
-	short int xlen;
-	int idx;
-	flg = buffer[3];
+	unsigned int flg;
 
-	idx = 10;
+	reader->readBytes(NULL, 3);
+	flg = reader->readBits(8);
+	reader->readBytes(NULL, 6);
 	if(flg & FEXTRA) {
-		xlen = *(short int*)&buffer[idx];
-		idx += xlen + 2;
+		unsigned int xlen = reader->readBits(16);
+		reader->readBytes(NULL, xlen);
 	}
 
 	if(flg & FNAME) {
-		while(buffer[idx] != '\0') {
-			idx++;
-		}
-		idx++;
+		char c;
+		do {
+			c = reader->readBits(8);
+		} while(c != '\0');
 	}
 
 	if(flg & FCOMMENT) {
-		while(buffer[idx] != '\0') {
-			idx++;
-		}
-		idx++;
+		char c;
+		do {
+			c = reader->readBits(8);
+		} while(c != '\0');
 	}
-
-	return idx;
 }
