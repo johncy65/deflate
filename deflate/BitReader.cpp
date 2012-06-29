@@ -7,8 +7,9 @@ BitReader::BitReader(const unsigned char *buffer, int length)
 	mBuffer = buffer;
 	mLength = length;
 	mPos = 0;
-	mCurrent = mBuffer[mPos];
 	mBit = 0;
+
+	updateCurrent();
 }
 
 unsigned int BitReader::readBits(int num)
@@ -33,11 +34,7 @@ unsigned int BitReader::readBits(int num)
 			mBit = 0;
 
 			mPos++;
-			if(mPos == mLength) {
-				break;
-			}
-
-			mCurrent = mBuffer[mPos];
+			updateCurrent();
 		}
 	}
 
@@ -46,15 +43,27 @@ unsigned int BitReader::readBits(int num)
 
 int BitReader::readBytes(unsigned char *buffer, int length)
 {
-	int readLength = length;
-	if(readLength > mLength - mPos) {
-		readLength = mLength - mPos;
+	int bytesRead = 0;
+
+	while(bytesRead < length)
+	{
+		if(mLength == 0) {
+			break;
+		}
+
+		int readLength = length;
+		if(readLength > mLength - mPos) {
+			readLength = mLength - mPos;
+		}
+
+		memcpy(buffer, mBuffer + mPos, readLength);
+		mPos += readLength;
+		bytesRead += readLength;
+
+		updateCurrent();
 	}
 
-	memcpy(buffer, mBuffer + mPos, readLength);
-	mPos += readLength;
-
-	return readLength;
+	return bytesRead;
 }
 
 void BitReader::byteSync()
@@ -63,13 +72,33 @@ void BitReader::byteSync()
 		mPos++;
 		mBit = 0;
 
-		if(mPos < mLength) {
-			mCurrent = mBuffer[mPos];
-		}
+		updateCurrent();
 	}
 }
 
 bool BitReader::empty()
 {
-	return (mPos == mLength);
+	return (mLength == 0);
+}
+
+void BitReader::updateCurrent()
+{
+	if(mPos >= mLength) {
+		mPos = 0;
+		mLength = refillBuffer();
+	}
+
+	if(mPos < mLength) {
+		mCurrent = mBuffer[mPos];
+	}
+}
+
+BitReaderBuffer::BitReaderBuffer(const unsigned char *buffer, int length)
+: BitReader(buffer, length)
+{
+}
+
+int BitReaderBuffer::refillBuffer()
+{
+	return 0;
 }

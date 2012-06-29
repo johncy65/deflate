@@ -12,11 +12,24 @@ public:
 	bool empty();
 
 private:
+	void updateCurrent();
+
+	virtual int refillBuffer() = 0;
+
 	const unsigned char *mBuffer;
 	int mLength;
 	int mPos;
 	unsigned char mCurrent;
 	int mBit;
+};
+
+class BitReaderBuffer : public BitReader {
+public:
+	BitReaderBuffer(const unsigned char *buffer, int length);
+
+private:
+
+	virtual int refillBuffer();
 };
 
 #endif
