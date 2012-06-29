@@ -2,7 +2,7 @@
 #include <string.h>
 
 #include "Inflate.hpp"
-#include "BitReader.hpp"
+#include "Reader.hpp"
 #include "CircularBuffer.hpp"
 #include "HuffmanTree.hpp"
 
@@ -43,7 +43,7 @@ const BitVal distBitvals[] = {
 
 static const int lengthsOrder[] = { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
 
-Inflate::Inflate(BitReader *reader)
+Inflate::Inflate(Reader *reader)
 {
 	mReader = reader;
 	mBuffer = new CircularBuffer(BUFFER_SIZE);

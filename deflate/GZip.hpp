@@ -1,11 +1,11 @@
 #ifndef GZIP_H
 #define GZIP_H
 
-class BitReader;
+class Reader;
 
 class GZip {
 public:
-	static void readHeader(BitReader *reader);
+	static void readHeader(Reader *reader);
 };
 
 #endif

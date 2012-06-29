@@ -1,6 +1,6 @@
 #include "GZip.hpp"
 
-#include "BitReader.hpp"
+#include "Reader.hpp"
 
 #define FTEXT     0x1
 #define FHCRC     0x2
@@ -8,7 +8,7 @@
 #define FNAME     0x8
 #define FCOMMENT  0x10
 
-void GZip::readHeader(BitReader *reader)
+void GZip::readHeader(Reader *reader)
 {
 	unsigned int flg;
 

@@ -1,12 +1,12 @@
-#ifndef BIT_READER_H
-#define BIT_READER_H
+#ifndef READER_H
+#define READER_H
 
 #include <stdio.h>
 
-class BitReader {
+class Reader {
 public:
-	BitReader();
-	virtual ~BitReader();
+	Reader();
+	virtual ~Reader();
 
 	unsigned int readBits(int num);
 	int readBytes(unsigned char *buffer, int length);
@@ -29,19 +29,19 @@ private:
 	int mBit;
 };
 
-class BitReaderBuffer : public BitReader {
+class BufferReader : public Reader {
 public:
-	BitReaderBuffer(const unsigned char *buffer, int length);
+	BufferReader(const unsigned char *buffer, int length);
 
 private:
 
 	virtual int refillBuffer();
 };
 
-class BitReaderFile : public BitReader {
+class FileReader : public Reader {
 public:
-	BitReaderFile(FILE *file);
-	virtual ~BitReaderFile();
+	FileReader(FILE *file);
+	virtual ~FileReader();
 
 private:
 	virtual int refillBuffer();

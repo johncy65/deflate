@@ -1,13 +1,13 @@
 #ifndef INFLATE_H
 #define INFLATE_H
 
-#include "BitReader.hpp"
+#include "Reader.hpp"
 #include "HuffmanTree.hpp"
 #include "CircularBuffer.hpp"
 
 class Inflate {
 public:
-	Inflate(BitReader *reader);
+	Inflate(Reader *reader);
 	~Inflate();
 
 	int read(unsigned char *buffer, int length);
@@ -17,7 +17,7 @@ private:
 	void setupBlock();
 	int readBlock(unsigned char *buffer, int length);
 
-	BitReader *mReader;
+	Reader *mReader;
 	unsigned int mBlockFinal;
 	unsigned int mBlockType;
 	HuffmanTree *mLitlengthTree;

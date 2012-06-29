@@ -1,7 +1,7 @@
 #include <string.h>
 
 #include "CircularBuffer.hpp"
-#include "BitReader.hpp"
+#include "Reader.hpp"
 
 CircularBuffer::CircularBuffer(int size)
 {
@@ -86,7 +86,7 @@ int CircularBuffer::write(const unsigned char *buffer, int length)
 	return bytesWritten;
 }
 
-int CircularBuffer::write(BitReader *reader, int length)
+int CircularBuffer::write(Reader *reader, int length)
 {
 	int writeLength = length;
 	if(writeLength > writeRemaining()) {

@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	BitReader *reader = new BitReaderFile(file);
+	Reader *reader = new FileReader(file);
 	GZip::readHeader(reader);
 	Inflate *inflate = new Inflate(reader);
 

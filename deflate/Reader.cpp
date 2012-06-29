@@ -1,8 +1,8 @@
-#include "BitReader.hpp"
+#include "Reader.hpp"
 
 #include <string.h>
 
-BitReader::BitReader()
+Reader::Reader()
 {
 	mBuffer = NULL;
 	mLength = 0;
@@ -10,11 +10,11 @@ BitReader::BitReader()
 	mBit = 0;
 }
 
-BitReader::~BitReader()
+Reader::~Reader()
 {
 }
 
-void BitReader::setBuffer(const unsigned char *buffer, int length)
+void Reader::setBuffer(const unsigned char *buffer, int length)
 {
 	mBuffer = buffer;
 	mLength = length;
@@ -22,7 +22,7 @@ void BitReader::setBuffer(const unsigned char *buffer, int length)
 	updateCurrent();
 }
 
-unsigned int BitReader::readBits(int num)
+unsigned int Reader::readBits(int num)
 {
 	unsigned int result = 0;
 	int read = 0;
@@ -51,7 +51,7 @@ unsigned int BitReader::readBits(int num)
 	return result;
 }
 
-int BitReader::readBytes(unsigned char *buffer, int length)
+int Reader::readBytes(unsigned char *buffer, int length)
 {
 	int bytesRead = 0;
 
@@ -79,7 +79,7 @@ int BitReader::readBytes(unsigned char *buffer, int length)
 	return bytesRead;
 }
 
-void BitReader::byteSync()
+void Reader::byteSync()
 {
 	if(mBit > 0) {
 		mPos++;
@@ -89,12 +89,12 @@ void BitReader::byteSync()
 	}
 }
 
-bool BitReader::empty()
+bool Reader::empty()
 {
 	return (mLength == 0);
 }
 
-void BitReader::updateCurrent()
+void Reader::updateCurrent()
 {
 	if(mPos >= mLength) {
 		mPos = 0;
@@ -106,30 +106,30 @@ void BitReader::updateCurrent()
 	}
 }
 
-BitReaderBuffer::BitReaderBuffer(const unsigned char *buffer, int length)
+BufferReader::BufferReader(const unsigned char *buffer, int length)
 {
 	setBuffer(buffer, length);
 }
 
-int BitReaderBuffer::refillBuffer()
+int BufferReader::refillBuffer()
 {
 	return 0;
 }
 
 #define BUFFER_SIZE 4096
-BitReaderFile::BitReaderFile(FILE *file) 
+FileReader::FileReader(FILE *file) 
 {
 	mFile = file;
 	mMutableBuffer = new unsigned char[BUFFER_SIZE];
 	setBuffer(mMutableBuffer, 0);
 }
 
-BitReaderFile::~BitReaderFile()
+FileReader::~FileReader()
 {
 	delete[] mMutableBuffer;
 }
 
-int BitReaderFile::refillBuffer()
+int FileReader::refillBuffer()
 {
 	return fread(mMutableBuffer, 1, BUFFER_SIZE, mFile);
 }

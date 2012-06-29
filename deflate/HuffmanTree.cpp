@@ -1,5 +1,5 @@
 #include "HuffmanTree.hpp"
-#include "BitReader.hpp"
+#include "Reader.hpp"
 
 #include <stdlib.h>
 
@@ -89,7 +89,7 @@ HuffmanTree::~HuffmanTree()
 	delete mChildren[1];
 }
 
-unsigned int HuffmanTree::read(BitReader *reader)
+unsigned int HuffmanTree::read(Reader *reader)
 {
 	HuffmanTree *cursor = this;
 

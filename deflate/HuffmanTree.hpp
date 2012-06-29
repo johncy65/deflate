@@ -1,7 +1,7 @@
 #ifndef HUFFMAN_TREE_H
 #define HUFFMAN_TREE_H
 
-class BitReader;
+class Reader;
 
 class HuffmanTree {
 public:
@@ -9,7 +9,7 @@ public:
 
 	~HuffmanTree();
 
-	unsigned int read(BitReader *reader);
+	unsigned int read(Reader *reader);
 
 private:
 	HuffmanTree(unsigned int codeword);
